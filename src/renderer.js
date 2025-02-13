@@ -868,94 +868,234 @@ async function exportToExcel() {
 
         // 保存文件
         XLSX.writeFile(workbook, fileName);
-        alert('导出成功！');
+
+        // 使用统一的提示框样式
+        await showDialog({
+            type: 'info',
+            title: '导出成功',
+            content: `
+                <div style="text-align: left;">
+                    <p>Excel 文件已成功生成。</p>
+                    <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                        文件位置：<br>
+                        <span style="color: #1890ff; word-break: break-all;">${require('path').join(process.cwd(), fileName)}</span>
+                    </p>
+                </div>
+            `,
+            buttons: [{ text: '确定', type: 'primary' }]
+        });
 
     } catch (error) {
         console.error('导出Excel失败:', error);
-        alert('导出失败: ' + error.message);
+        await showDialog({
+            type: 'danger',
+            title: '导出失败',
+            content: error.message,
+            buttons: [{ text: '确定', type: 'primary' }]
+        });
     }
 }
 
 // 修改 exportToPDF 函数
 async function exportToPDF() {
     try {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear().toString();
-        
-        // 获取分类统计数据
-        const categorySummary = await window.ipcRenderer.invoke('get-category-summary', 
-            `${currentYear}-01-01`,
-            `${currentYear}-12-31`);
+        // 获取所有数据
+        const transactionsResult = await window.ipcRenderer.invoke('get-transactions', {});
+        const budgetsResult = await window.ipcRenderer.invoke('get-all-budgets');
+        const recurringResult = await window.ipcRenderer.invoke('get-recurring-transactions');
+
+        // 确保获取到正确的数据
+        if (!transactionsResult.success || !budgetsResult.success || !recurringResult.success) {
+            throw new Error('获取数据失败');
+        }
+
+        const transactions = transactionsResult.data;
+        const budgets = budgetsResult.data;
+        const recurringTransactions = recurringResult.data;
+
+        // 创建一个隐藏的容器
+        const hiddenContainer = document.createElement('div');
+        hiddenContainer.style.cssText = `
+            position: fixed;
+            left: -9999px;
+            top: -9999px;
+            width: 800px;
+            height: auto;
+            overflow: visible;
+            z-index: -1;
+        `;
 
         // 创建打印内容
         const printContent = document.createElement('div');
+        printContent.className = 'print-content';
         printContent.style.cssText = `
             padding: 40px;
             font-family: Arial, sans-serif;
             color: #333;
-        `;
-        
-        // 添加标题和表格
-        printContent.innerHTML = `
-            <h2 style="font-size: 18px; margin-bottom: 20px;">收支分类统计</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="border: 1px solid #ddd; padding: 12px; background: #f5f5f5; text-align: left;">类型</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; background: #f5f5f5; text-align: left;">类别</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; background: #f5f5f5; text-align: right;">笔数</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; background: #f5f5f5; text-align: right;">总金额</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; background: #f5f5f5; text-align: right;">平均金额</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${categorySummary.success ? categorySummary.data.map(item => `
-                        <tr>
-                            <td style="border: 1px solid #ddd; padding: 12px;">
-                                ${item.type === 'income' ? '收入' : '支出'}
-                            </td>
-                            <td style="border: 1px solid #ddd; padding: 12px;">
-                                ${item.category}
-                            </td>
-                            <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">
-                                ${item.count}
-                            </td>
-                            <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">
-                                ¥${item.total.toFixed(2)}
-                            </td>
-                            <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">
-                                ¥${item.average.toFixed(2)}
-                            </td>
-                        </tr>
-                    `).join('') : ''}
-                </tbody>
-            </table>
+            background: white;
+            width: 100%;
+            box-sizing: border-box;
         `;
 
-        // 创建临时容器
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'fixed';
-        tempContainer.style.left = '-9999px';
-        tempContainer.appendChild(printContent);
-        document.body.appendChild(tempContainer);
+        // 添加实际内容
+        printContent.innerHTML = `
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="font-size: 24px; color: #1890ff; margin-bottom: 8px;">财务数据报表</h1>
+                <p style="color: #666; margin: 0;">导出时间：${new Date().toLocaleString()}</p>
+            </div>
+
+            <!-- 交易记录表 -->
+            <div style="margin-bottom: 40px;">
+                <h2 style="font-size: 18px; color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #1890ff;">
+                    交易记录
+                </h2>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">日期</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类型</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类别</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">金额</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.length > 0 ? transactions.map(t => `
+                            <tr>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.date}</td>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">
+                                    <span style="color: ${t.type === 'income' ? '#52c41a' : '#ff4d4f'};">
+                                        ${t.type === 'income' ? '收入' : '支出'}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.category}</td>
+                                <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
+                                    <span style="color: ${t.type === 'income' ? '#52c41a' : '#ff4d4f'};">
+                                        ${t.type === 'income' ? '+' : '-'}${Math.abs(t.amount).toFixed(2)}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.description || '-'}</td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="5" style="text-align: center; padding: 12px 15px; border: 1px solid #e8e8e8;">暂无交易记录</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 预算记录表 -->
+            <div style="margin-bottom: 40px;">
+                <h2 style="font-size: 18px; color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #1890ff;">
+                    预算记录
+                </h2>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">月份</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类别</th>
+                            <th style="background: #f5f5f5; padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">预算金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${budgets.length > 0 ? budgets.map(b => `
+                            <tr>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${b.month}</td>
+                                <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${b.category}</td>
+                                <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
+                                    ¥${b.amount.toFixed(2)}
+                                </td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="3" style="text-align: center; padding: 12px 15px; border: 1px solid #e8e8e8;">暂无预算记录</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 定期交易表 -->
+            ${recurringTransactions.length > 0 ? `
+                <div style="margin-bottom: 40px;">
+                    <h2 style="font-size: 18px; color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #1890ff;">
+                        定期交易
+                    </h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类型</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类别</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">金额</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">频率</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">开始日期</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">结束日期</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">状态</th>
+                                <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">描述</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recurringTransactions.map(r => `
+                                <tr>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">
+                                        <span style="color: ${r.type === 'income' ? '#52c41a' : '#ff4d4f'};">
+                                            ${r.type === 'income' ? '收入' : '支出'}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.category}</td>
+                                    <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
+                                        <span style="color: ${r.type === 'income' ? '#52c41a' : '#ff4d4f'};">
+                                            ${r.type === 'income' ? '+' : '-'}${Math.abs(r.amount).toFixed(2)}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">
+                                        ${r.frequency === 'monthly' ? '每月' : r.frequency === 'weekly' ? '每周' : '每年'}
+                                    </td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.start_date}</td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.end_date || '-'}</td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.active ? '启用' : '禁用'}</td>
+                                    <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.description || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            <div style="margin-top: 40px; font-size: 12px; color: #999; text-align: center;">
+                <p>本报表由个人财务管理系统自动生成</p>
+            </div>
+        `;
+
+        // 将打印内容添加到隐藏容器中
+        hiddenContainer.appendChild(printContent);
+        document.body.appendChild(hiddenContainer);
 
         // 使用 Electron 的打印功能
-        const options = {
-            marginsType: 1,
-            pageSize: 'A4',
-            printBackground: true,
-            landscape: false
-        };
-
-        // 调用打印
-        await window.print(options);
+        const result = await window.ipcRenderer.invoke('print-to-pdf');
 
         // 清理临时元素
-        document.body.removeChild(tempContainer);
+        document.body.removeChild(hiddenContainer);
 
+        if (result.success) {
+            await showDialog({
+                type: 'info',
+                title: '导出成功',
+                content: `
+                    <div style="text-align: left;">
+                        <p>PDF 文件已成功生成。</p>
+                        <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                            文件位置：<br>
+                            <span style="color: #1890ff; word-break: break-all;">${result.filePath}</span>
+                        </p>
+                    </div>
+                `,
+                buttons: [{ text: '确定', type: 'primary' }]
+            });
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         console.error('导出PDF失败:', error);
-        alert('导出失败: ' + error.message);
+        showDialog({
+            type: 'danger',
+            title: '导出失败',
+            content: error.message,
+            buttons: [{ text: '确定', type: 'primary' }]
+        });
     }
 }
 
@@ -1868,35 +2008,49 @@ document.getElementById('closeButton').addEventListener('click', async () => {
     }
 });
 
-// 添加清空数据的函数
+// 修改清空数据的函数
 async function clearAllData() {
-    const confirmed = await confirmDialog(
-        '清空数据',
-        '此操作将删除所有交易记录、预算设置等数据，且不可恢复！',
-        'danger'
-    );
+    const confirmed = await showDialog({
+        type: 'danger',
+        title: '清空数据',
+        content: `
+            <div style="text-align: left;">
+                <p>确定要清空所有数据吗？</p>
+                <p style="margin-top: 12px; font-size: 13px; color: #ff4d4f;">
+                    <i class="mdi mdi-alert-circle"></i>
+                    此操作将删除所有交易记录、预算设置等数据，且不可恢复！
+                </p>
+            </div>
+        `,
+        buttons: [
+            { text: '取消', value: 'cancel', type: 'default' },
+            { text: '确定清空', value: 'confirm', type: 'danger' }
+        ]
+    });
     
-    if (!confirmed) return;
-    
-    try {
-        const result = await window.ipcRenderer.invoke('clear-data');
-        if (result.success) {
-            await showDialog({
-                type: 'info',
-                title: '操作成功',
-                content: '数据已清空',
+    if (confirmed === 'confirm') {
+        try {
+            const result = await window.ipcRenderer.invoke('clear-data-direct');
+            if (result.success) {
+                await showDialog({
+                    type: 'info',
+                    title: '操作成功',
+                    content: '数据已清空',
+                    buttons: [{ text: '确定', type: 'primary' }]
+                });
+                showDashboard();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('清空数据失败:', error);
+            showDialog({
+                type: 'danger',
+                title: '清空失败',
+                content: error.message,
                 buttons: [{ text: '确定', type: 'primary' }]
             });
-            showDashboard();
         }
-    } catch (error) {
-        console.error('清空数据失败:', error);
-        showDialog({
-            type: 'danger',
-            title: '清空失败',
-            content: error.message,
-            buttons: [{ text: '确定', type: 'primary' }]
-        });
     }
 }
 

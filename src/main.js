@@ -211,21 +211,69 @@ ipcMain.handle('get-category-summary', async (event, startDate, endDate) => {
     }
 });
 
-ipcMain.handle('print-to-pdf', async (event, options) => {
+// 修改 PDF 导出处理函数
+ipcMain.handle('print-to-pdf', async (event) => {
     try {
-        const win = BrowserWindow.fromWebContents(event.sender);
         const currentDate = new Date();
         const fileName = `财务报表_${currentDate.getFullYear()}.pdf`;
+        const filePath = path.join(app.getPath('downloads'), fileName);
         
-        const result = await win.webContents.printToPDF({
+        // 创建一个临时窗口来生成 PDF
+        const printWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            show: false,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false
+            }
+        });
+
+        // 从发送事件的窗口获取 HTML 内容
+        const htmlContent = await event.sender.executeJavaScript(`
+            document.querySelector('.print-content').outerHTML
+        `);
+
+        // 在临时窗口中加载内容
+        await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {
+                        padding: 40px;
+                        font-family: Arial, sans-serif;
+                    }
+                    @media print {
+                        body {
+                            padding: 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+            </body>
+            </html>
+        `)}`);
+
+        // 等待内容加载完成
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 生成 PDF
+        const data = await printWindow.webContents.printToPDF({
             marginsType: 1,
             pageSize: 'A4',
             printBackground: true,
             landscape: false
         });
 
-        const filePath = path.join(app.getPath('downloads'), fileName);
-        fs.writeFileSync(filePath, result);
+        // 关闭临时窗口
+        printWindow.close();
+
+        // 写入文件
+        await fsPromises.writeFile(filePath, data);
         
         // 打开文件所在文件夹
         require('electron').shell.showItemInFolder(filePath);
@@ -334,6 +382,7 @@ ipcMain.handle('get-recurring-transactions', async () => {
         const transactions = await db.getRecurringTransactions();
         return { success: true, data: transactions };
     } catch (error) {
+        console.error('获取定期交易失败:', error);
         return { success: false, error: error.message };
     }
 });
@@ -600,26 +649,11 @@ ipcMain.on('window-control', async (event, command) => {
     }
 });
 
-// 添加清空数据的 IPC 处理
-ipcMain.handle('clear-data', async () => {
+// 修改清空数据的 IPC 处理
+ipcMain.handle('clear-data-direct', async () => {
     try {
-        // 弹出确认对话框
-        const { response } = await dialog.showMessageBox({
-            type: 'warning',
-            title: '清空数据',
-            message: '确定要清空所有数据吗？',
-            detail: '此操作将删除所有交易记录、预算设置等数据，且不可恢复！',
-            buttons: ['取消', '确定清空'],
-            defaultId: 0,
-            cancelId: 0
-        });
-
-        if (response === 1) { // 用户点击了"确定清空"
-            await db.clearAllData();
-            return { success: true };
-        } else {
-            return { success: false, error: '用户取消操作' };
-        }
+        await db.clearAllData();
+        return { success: true };
     } catch (error) {
         console.error('清空数据失败:', error);
         return { success: false, error: error.message };
@@ -638,4 +672,15 @@ ipcMain.handle('show-save-dialog', async (event, options) => {
     });
     
     return result.canceled ? null : result.filePath;
+});
+
+// 添加获取所有预算的处理函数
+ipcMain.handle('get-all-budgets', async () => {
+    try {
+        const budgets = await db.getAllBudgets();
+        return { success: true, data: budgets };
+    } catch (error) {
+        console.error('获取所有预算失败:', error);
+        return { success: false, error: error.message };
+    }
 }); 
