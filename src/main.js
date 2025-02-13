@@ -16,6 +16,7 @@ function createLoadingWindow() {
     height: 200,
     frame: false,
     transparent: true,
+    icon: path.join(__dirname, '../assets/icon.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -31,6 +32,7 @@ function createWindow () {
     height: 800,
     show: false,  // 初始时不显示主窗口
     frame: false, // 取消默认边框
+    icon: path.join(__dirname, '../assets/icon.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -56,13 +58,15 @@ function createWindow () {
     });
 }
 
-app.whenReady().then(() => {
-  createLoadingWindow();  // 先创建加载窗口
-  createWindow();        // 再创建主窗口
-  scheduleRecurringTransactions();
-  
-  // 初始化自动备份
-  initAutoBackup();
+app.whenReady().then(async () => {
+  try {
+    await setupAutoBackup();  // 初始化自动备份
+    createLoadingWindow();    // 创建加载窗口
+    createWindow();          // 创建主窗口
+    scheduleRecurringTransactions();
+  } catch (error) {
+    console.error('应用初始化失败:', error);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -547,10 +551,32 @@ ipcMain.handle('export-data', async (event, format, savePath) => {
 });
 
 // 修改自动备份功能
-function setupAutoBackup() {
-    // 删除立即执行备份的代码
-    // 只在退出时进行备份
-    console.log('自动备份功能已启用');
+async function setupAutoBackup() {
+    try {
+        // 使用应用程序目录而不是用户数据目录
+        const appPath = path.dirname(app.getPath('exe'));
+        const backupPath = path.join(appPath, 'backups');
+        
+        // 确保备份目录存在
+        if (!fs.existsSync(backupPath)) {
+            await fsPromises.mkdir(backupPath, { recursive: true });
+        }
+        
+        // 确保数据库文件存在
+        const dbPath = path.join(appPath, 'finance.db');
+        if (!fs.existsSync(dbPath)) {
+            console.error('数据库文件不存在:', dbPath);
+            return;
+        }
+        
+        console.log('自动备份已初始化:', {
+            appPath,
+            backupPath,
+            dbPath
+        });
+    } catch (error) {
+        console.error('初始化自动备份失败:', error);
+    }
 }
 
 // 修改自动备份初始化函数
@@ -560,7 +586,7 @@ async function initAutoBackup() {
         const autoBackupEnabled = settings.find(s => s.key === 'autoBackup')?.value === 'true';
         
         if (autoBackupEnabled) {
-            setupAutoBackup();
+            await setupAutoBackup();
         }
     } catch (error) {
         console.error('初始化自动备份失败:', error);
@@ -597,14 +623,22 @@ ipcMain.on('window-control', async (event, command) => {
                 const autoBackupEnabled = settings.find(s => s.key === 'autoBackup')?.value === 'true';
                 
                 if (autoBackupEnabled) {
-                    // 创建备份目录
-                    const backupPath = path.join(__dirname, 'backups');
+                    const appPath = path.dirname(app.getPath('exe'));
+                    const backupPath = path.join(appPath, 'backups');
+                    const dbPath = path.join(appPath, 'finance.db');
+
+                    // 确保备份目录存在
                     if (!fs.existsSync(backupPath)) {
-                        fs.mkdirSync(backupPath);
+                        await fsPromises.mkdir(backupPath, { recursive: true });
+                    }
+
+                    // 确保数据库文件存在
+                    if (!fs.existsSync(dbPath)) {
+                        throw new Error('数据库文件不存在');
                     }
                     
                     // 获取所有备份文件并按时间排序
-                    const files = await fs.promises.readdir(backupPath);
+                    const files = await fsPromises.readdir(backupPath);
                     const backupFiles = files
                         .filter(file => file.startsWith('backup_') && file.endsWith('.db'))
                         .sort((a, b) => b.localeCompare(a));
@@ -612,7 +646,7 @@ ipcMain.on('window-control', async (event, command) => {
                     // 如果已有5个或更多备份，删除最旧的备份
                     if (backupFiles.length >= 5) {
                         const oldestFile = path.join(backupPath, backupFiles[backupFiles.length - 1]);
-                        await fs.promises.unlink(oldestFile);
+                        await fsPromises.unlink(oldestFile);
                     }
                     
                     // 生成新的备份文件名（精确到秒）
@@ -621,17 +655,18 @@ ipcMain.on('window-control', async (event, command) => {
                     const backupFile = path.join(backupPath, `backup_${timestamp}.db`);
                     
                     // 创建新备份
-                    await fs.promises.copyFile(db.dbPath, backupFile);
-
-                    // 显示备份成功提示
-                    mainWindow.webContents.send('backup-complete', backupFile);
+                    await fsPromises.copyFile(dbPath, backupFile);
+                    console.log('自动备份已创建:', {
+                        source: dbPath,
+                        backup: backupFile
+                    });
                 }
                 
                 // 关闭应用
                 mainWindow.close();
             } catch (error) {
                 console.error('自动备份失败:', error);
-                dialog.showMessageBox({
+                const response = await dialog.showMessageBox({
                     type: 'error',
                     title: '备份失败',
                     message: '自动备份失败，是否仍要退出？',
@@ -639,11 +674,11 @@ ipcMain.on('window-control', async (event, command) => {
                     buttons: ['取消', '仍要退出'],
                     defaultId: 0,
                     cancelId: 0
-                }).then(({response}) => {
-                    if (response === 1) {
-                        mainWindow.close();
-                    }
                 });
+                
+                if (response.response === 1) {
+                    mainWindow.close();
+                }
             }
             break;
     }

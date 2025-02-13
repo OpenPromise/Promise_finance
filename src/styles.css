@@ -581,24 +581,72 @@ th {
 }
 
 .titlebar-button {
-    -webkit-app-region: no-drag; /* 按钮不可拖动 */
+    -webkit-app-region: no-drag;
     background: transparent;
     border: none;
-    color: white;
-    width: 30px;
+    color: #fff;
+    width: 46px;
     height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .titlebar-button:hover {
-    background: rgba(255,255,255,0.1);
+    background-color: rgba(255,255,255,0.2);
+}
+
+#minimizeButton:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+#maximizeButton:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+#closeButton:hover {
+    background-color: #e81123;
+}
+
+#closeButton:active {
+    background-color: #f1707a;
 }
 
 .titlebar-button i {
     font-size: 16px;
+    line-height: 1;
+    position: relative;
+    top: 1px;
+}
+
+/* 使用更标准的 Windows 风格图标 */
+.mdi-window-minimize::before { content: "\F05B0"; }  /* 标准的最小化横线 */
+.mdi-window-maximize::before { content: "\F05AF"; }  /* 标准的最大化方框 */
+.mdi-window-close::before { content: "\F0158"; }     /* 标准的关闭 X */
+
+/* 当窗口最大化时的还原图标 */
+.window-maximized #maximizeButton .mdi-window-maximize::before {
+    content: "\F05AF";  /* 标准的还原双方框 */
+}
+
+/* 菜单图标 */
+.mdi-view-dashboard::before { content: "\F056E"; }
+.mdi-cash-multiple::before { content: "\F0116"; }
+.mdi-chart-pie::before { content: "\F0128"; }
+.mdi-file-chart::before { content: "\F0214"; }
+.mdi-chart-line::before { content: "\F0121"; }
+.mdi-refresh::before { content: "\F0450"; }
+.mdi-cog::before { content: "\F0493"; }
+
+.mdi {
+    display: inline-block;
+    font: normal normal normal 24px/1 "Material Design Icons";
+    font-size: inherit;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* 危险操作区域样式 */
@@ -733,4 +781,4 @@ th {
 
 .dialog-button-default:hover {
     background: #d9d9d9;
-} 
+}

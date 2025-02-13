@@ -936,7 +936,7 @@ async function exportToPDF() {
             width: 100%;
             box-sizing: border-box;
         `;
-
+        
         // 添加实际内容
         printContent.innerHTML = `
             <div style="text-align: center; margin-bottom: 40px;">
@@ -950,16 +950,16 @@ async function exportToPDF() {
                     交易记录
                 </h2>
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead>
-                        <tr>
+                <thead>
+                    <tr>
                             <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">日期</th>
                             <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类型</th>
                             <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">类别</th>
                             <th style="background: #f5f5f5; padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">金额</th>
                             <th style="background: #f5f5f5; padding: 12px 15px; text-align: left; border: 1px solid #e8e8e8;">描述</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                    </tr>
+                </thead>
+                <tbody>
                         ${transactions.length > 0 ? transactions.map(t => `
                             <tr>
                                 <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.date}</td>
@@ -967,13 +967,13 @@ async function exportToPDF() {
                                     <span style="color: ${t.type === 'income' ? '#52c41a' : '#ff4d4f'};">
                                         ${t.type === 'income' ? '收入' : '支出'}
                                     </span>
-                                </td>
+                            </td>
                                 <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.category}</td>
                                 <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
                                     <span style="color: ${t.type === 'income' ? '#52c41a' : '#ff4d4f'};">
                                         ${t.type === 'income' ? '+' : '-'}${Math.abs(t.amount).toFixed(2)}
                                     </span>
-                                </td>
+                            </td>
                                 <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${t.description || '-'}</td>
                             </tr>
                         `).join('') : '<tr><td colspan="5" style="text-align: center; padding: 12px 15px; border: 1px solid #e8e8e8;">暂无交易记录</td></tr>'}
@@ -1001,7 +1001,7 @@ async function exportToPDF() {
                                 <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${b.category}</td>
                                 <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
                                     ¥${b.amount.toFixed(2)}
-                                </td>
+                            </td>
                             </tr>
                         `).join('') : '<tr><td colspan="3" style="text-align: center; padding: 12px 15px; border: 1px solid #e8e8e8;">暂无预算记录</td></tr>'}
                     </tbody>
@@ -1034,13 +1034,13 @@ async function exportToPDF() {
                                         <span style="color: ${r.type === 'income' ? '#52c41a' : '#ff4d4f'};">
                                             ${r.type === 'income' ? '收入' : '支出'}
                                         </span>
-                                    </td>
+                            </td>
                                     <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.category}</td>
                                     <td style="padding: 12px 15px; text-align: right; border: 1px solid #e8e8e8;">
                                         <span style="color: ${r.type === 'income' ? '#52c41a' : '#ff4d4f'};">
                                             ${r.type === 'income' ? '+' : '-'}${Math.abs(r.amount).toFixed(2)}
                                         </span>
-                                    </td>
+                            </td>
                                     <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">
                                         ${r.frequency === 'monthly' ? '每月' : r.frequency === 'weekly' ? '每周' : '每年'}
                                     </td>
@@ -1048,10 +1048,10 @@ async function exportToPDF() {
                                     <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.end_date || '-'}</td>
                                     <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.active ? '启用' : '禁用'}</td>
                                     <td style="padding: 12px 15px; border: 1px solid #e8e8e8;">${r.description || '-'}</td>
-                                </tr>
+                        </tr>
                             `).join('')}
-                        </tbody>
-                    </table>
+                </tbody>
+            </table>
                 </div>
             ` : ''}
 
@@ -1317,7 +1317,7 @@ async function exportData() {
                 // 确保移除加载对话框
                 loadingBackdrop.remove();
 
-                if (result.success) {
+        if (result.success) {
                     await showDialog({
                         type: 'info',
                         title: '导出成功',
@@ -1332,10 +1332,10 @@ async function exportData() {
                         `,
                         buttons: [{ text: '确定', type: 'primary' }]
                     });
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
                 // 确保在出错时也移除加载对话框
                 loadingBackdrop?.remove();
                 throw error;
@@ -2004,7 +2004,7 @@ document.getElementById('closeButton').addEventListener('click', async () => {
     });
 
     if (confirmed === 'confirm') {
-        window.ipcRenderer.send('window-control', 'close');
+    window.ipcRenderer.send('window-control', 'close');
     }
 });
 
@@ -2031,7 +2031,7 @@ async function clearAllData() {
     if (confirmed === 'confirm') {
         try {
             const result = await window.ipcRenderer.invoke('clear-data-direct');
-            if (result.success) {
+        if (result.success) {
                 await showDialog({
                     type: 'info',
                     title: '操作成功',
@@ -2041,9 +2041,9 @@ async function clearAllData() {
                 showDashboard();
             } else {
                 throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('清空数据失败:', error);
+        }
+    } catch (error) {
+        console.error('清空数据失败:', error);
             showDialog({
                 type: 'danger',
                 title: '清空失败',
@@ -2126,8 +2126,8 @@ async function restoreData() {
         });
         
         if (confirmed === 'confirm') {
-            const result = await window.ipcRenderer.invoke('restore-data');
-            if (result.success) {
+        const result = await window.ipcRenderer.invoke('restore-data');
+        if (result.success) {
                 await showDialog({
                     type: 'info',
                     title: '恢复成功',
@@ -2142,8 +2142,8 @@ async function restoreData() {
                     `,
                     buttons: [{ text: '确定', type: 'primary' }]
                 });
-            } else {
-                throw new Error(result.error);
+        } else {
+            throw new Error(result.error);
             }
         }
     } catch (error) {
@@ -2450,4 +2450,19 @@ async function showBackupCompleteDialog(backupPath) {
             }
         ]
     });
-} 
+}
+
+// 在文件开头添加
+const maximizeButton = document.getElementById('maximizeButton');
+
+// 添加窗口最大化状态处理
+maximizeButton.addEventListener('click', () => {
+    const isMaximized = window.innerWidth === screen.availWidth && window.innerHeight === screen.availHeight;
+    document.body.classList.toggle('window-maximized', isMaximized);
+});
+
+// 监听窗口大小变化
+window.addEventListener('resize', () => {
+    const isMaximized = window.innerWidth === screen.availWidth && window.innerHeight === screen.availHeight;
+    document.body.classList.toggle('window-maximized', isMaximized);
+}); 

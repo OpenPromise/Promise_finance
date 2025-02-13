@@ -5,7 +5,9 @@
   "main": "src/main.js",
   "scripts": {
     "start": "node -e \"process.platform === 'win32' ? require('child_process').execSync('chcp 65001') : null\" && electron .",
-    "build": "electron-builder"
+    "prebuild": "node prepare-build.js",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
   },
   "author": "",
   "license": "ISC",
@@ -13,10 +15,50 @@
     "@mdi/font": "^6.9.96",
     "electron": "^34.1.1",
     "electron-builder": "^25.1.8",
-    "electron-reload": "^2.0.0-alpha.1",
-    "sqlite3": "^5.1.7"
+    "electron-reload": "^2.0.0-alpha.1"
   },
   "dependencies": {
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "sqlite3": "^5.1.7"
+  },
+  "build": {
+    "appId": "com.promise.finance",
+    "productName": "个人财务管理系统",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "个人财务管理系统"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/sqlite3/lib/binding/napi-v6-win32-x64",
+        "to": "sqlite3",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }

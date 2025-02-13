@@ -1,8 +1,10 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const { app } = require('electron');
 
-const DB_PATH = path.join(__dirname, 'finance.db');
+// 使用应用程序目录
+const DB_PATH = path.join(path.dirname(app.getPath('exe')), 'finance.db');
 
 // 修改初始化逻辑，不删除现有数据库
 const db = new sqlite3.Database(DB_PATH, (err) => {
