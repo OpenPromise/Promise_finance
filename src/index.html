@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>专业财务管理系统</title>
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="../node_modules/@mdi/font/css/materialdesignicons.min.css" as="style">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../node_modules/@mdi/font/css/materialdesignicons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- 添加自定义标题栏 -->
+    <div class="titlebar">
+        <div class="titlebar-title">财务管理系统</div>
+        <div class="titlebar-controls">
+            <button class="titlebar-button" id="minimizeButton">
+                <i class="mdi mdi-window-minimize"></i>
+            </button>
+            <button class="titlebar-button" id="maximizeButton">
+                <i class="mdi mdi-window-maximize"></i>
+            </button>
+            <button class="titlebar-button" id="closeButton">
+                <i class="mdi mdi-window-close"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 添加初始加载状态 -->
+    <div id="app-loading" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                <h2>财务管理系统</h2>
+            </div>
+            <div class="main-menu">
+                <div class="menu-item active" onclick="showDashboard()">
+                    <i class="mdi mdi-view-dashboard"></i>
+                    <span>仪表盘</span>
+                </div>
+                <div class="menu-item" onclick="showTransactions()">
+                    <i class="mdi mdi-cash-multiple"></i>
+                    <span>收支记录</span>
+                </div>
+                <div class="menu-item" onclick="showBudget()">
+                    <i class="mdi mdi-chart-pie"></i>
+                    <span>预算管理</span>
+                </div>
+                <div class="menu-item" onclick="showReports()">
+                    <i class="mdi mdi-file-chart"></i>
+                    <span>财务报表</span>
+                </div>
+                <div class="menu-item" onclick="showAnalysis()">
+                    <i class="mdi mdi-chart-line"></i>
+                    <span>数据分析</span>
+                </div>
+                <div class="menu-item" onclick="showRecurringTransactions()">
+                    <i class="mdi mdi-refresh"></i>
+                    <span>定期交易</span>
+                </div>
+                <div class="menu-item" onclick="showSettings()">
+                    <i class="mdi mdi-cog"></i>
+                    <span>系统设置</span>
+                </div>
+            </div>
+        </div>
+        <div class="main-content" id="content">
+            <!-- 内容区域 -->
+        </div>
+    </div>
+    
+    <!-- 添加预加载脚本 -->
+    <script src="preload.js"></script>
+    <!-- 其他脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="renderer.js" defer></script>
+</body>
+</html> 

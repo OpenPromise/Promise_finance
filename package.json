@@ -1,0 +1,22 @@
+{
+  "name": "finance-manager",
+  "version": "1.0.0",
+  "description": "个人财务管理系统",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node -e \"process.platform === 'win32' ? require('child_process').execSync('chcp 65001') : null\" && electron .",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@mdi/font": "^6.9.96",
+    "electron": "^34.1.1",
+    "electron-builder": "^25.1.8",
+    "electron-reload": "^2.0.0-alpha.1",
+    "sqlite3": "^5.1.7"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
