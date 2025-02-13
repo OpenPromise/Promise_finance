@@ -1542,7 +1542,7 @@ async function showSettings() {
                     <h2>关于</h2>
                     <div class="about-info">
                         <p>版本：1.0.0</p>
-                        <p>作者：辉哥</p>
+                        <p>作者：辉易管理系统</p>
                         <p>© 2024 All Rights Reserved</p>
                     </div>
             </div>
@@ -2465,4 +2465,16 @@ maximizeButton.addEventListener('click', () => {
 window.addEventListener('resize', () => {
     const isMaximized = window.innerWidth === screen.availWidth && window.innerHeight === screen.availHeight;
     document.body.classList.toggle('window-maximized', isMaximized);
-}); 
+});
+
+async function showAbout() {
+    setActiveMenuItem('.menu-item:nth-child(7)');
+    document.getElementById('content').innerHTML = `
+        <div class="about-info">
+            <h2>关于辉易管理系统</h2>
+            <p>版本：1.0.0</p>
+            <p>作者：辉哥</p>
+            <p>© 2024 All Rights Reserved</p>
+        </div>
+    `;
+} 

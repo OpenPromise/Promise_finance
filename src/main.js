@@ -668,7 +668,7 @@ ipcMain.on('window-control', async (event, command) => {
                 console.error('自动备份失败:', error);
                 const response = await dialog.showMessageBox({
                     type: 'error',
-                    title: '备份失败',
+                    title: '辉易管理系统',
                     message: '自动备份失败，是否仍要退出？',
                     detail: error.message,
                     buttons: ['取消', '仍要退出'],

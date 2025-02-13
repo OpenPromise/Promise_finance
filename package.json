@@ -1,7 +1,7 @@
 {
-  "name": "finance-manager",
+  "name": "huiyi-manager",
   "version": "1.0.0",
-  "description": "个人财务管理系统",
+  "description": "辉易管理系统",
   "main": "src/main.js",
   "scripts": {
     "start": "node -e \"process.platform === 'win32' ? require('child_process').execSync('chcp 65001') : null\" && electron .",
@@ -22,8 +22,8 @@
     "sqlite3": "^5.1.7"
   },
   "build": {
-    "appId": "com.promise.finance",
-    "productName": "个人财务管理系统",
+    "appId": "com.huiyi.manager",
+    "productName": "辉易管理系统",
     "directories": {
       "output": "dist"
     },
