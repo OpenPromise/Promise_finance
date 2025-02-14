@@ -211,22 +211,22 @@ async function showBudget() {
         const budgets = budgetResult.success ? budgetResult.data : [];
         const hasBudget = budgets.length > 0;
         
-        // 获取总支出
-        const totalExpenses = expensesResult.success ? 
-            (expensesResult.data.find(item => item.type === 'expense')?.total || 0) : 0;
-        
-        // 获取分类支出
+        // 获取分类支出数据
         const categoryExpenses = categoryExpensesResult.success ? 
             categoryExpensesResult.data.reduce((acc, curr) => {
                 acc[curr.category] = curr.total;
                 return acc;
             }, {}) : {};
-
-        // 计算总预算
+        
+        // 修改总支出的计算方式
+        const totalExpenses = categoryExpensesResult.success ? 
+            Object.values(categoryExpenses).reduce((sum, amount) => sum + amount, 0) : 0;
+        
+        // 计算总预算和剩余预算
         const totalBudget = hasBudget ? 
             budgets.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0) : 0;
         
-        // 计算剩余预算和使用比例
+        // 使用新的总支出计算剩余预算
         const remainingBudget = hasBudget ? (totalBudget - totalExpenses) : 0;
         const usagePercent = hasBudget && totalBudget > 0 ? 
             (totalExpenses / totalBudget * 100) : 0;
@@ -516,7 +516,7 @@ function initYearlyChart(data) {
 
 async function showAnalysis() {
     try {
-    setActiveMenuItem('.menu-item:nth-child(5)');
+        setActiveMenuItem('.menu-item:nth-child(5)');
         
         const currentDate = new Date();
         const year = currentDate.getFullYear();
@@ -533,21 +533,26 @@ async function showAnalysis() {
         let totalIncome = 0;
         let totalExpense = 0;
         stats.data.forEach(item => {
+            const amount = Number((parseFloat(item.total) || 0).toFixed(2));
             if (item.type === 'income') {
-                totalIncome += parseFloat(item.total) || 0;
+                totalIncome += amount;
             } else if (item.type === 'expense') {
-                totalExpense += parseFloat(item.total) || 0;
+                totalExpense += amount;
             }
         });
 
         // 计算结余和收支比
-        const balance = totalIncome - totalExpense;
-        const ratio = totalExpense > 0 ? (totalIncome / totalExpense * 100) : 0;
+        const balance = Number((totalIncome - totalExpense).toFixed(2));
+        const expenseRatio = totalIncome > 0 ? 
+            Number((totalExpense / totalIncome).toFixed(2)) : 0;
+
+        // 使用之前定义的计算函数获取更详细的财务比率
+        const ratios = calculateFinancialRatios(totalIncome, totalExpense);
 
         // 更新界面
-    document.getElementById('content').innerHTML = `
-        <div class="header">
-            <h1>数据分析</h1>
+        document.getElementById('content').innerHTML = `
+            <div class="header">
+                <h1>数据分析</h1>
                 <div class="date-selector">
                     <select id="yearSelect" onchange="updateAnalysis()">
                         ${generateYearOptions(year)}
@@ -556,29 +561,29 @@ async function showAnalysis() {
                         ${generateMonthOptions(month)}
                     </select>
                 </div>
-        </div>
-        <div class="dashboard-grid">
-            <div class="stat-card">
+            </div>
+            <div class="dashboard-grid">
+                <div class="stat-card">
                     <h3>总收入</h3>
                     <div class="number income">${totalIncome.toFixed(2)}</div>
-            </div>
-            <div class="stat-card">
+                </div>
+                <div class="stat-card">
                     <h3>总支出</h3>
                     <div class="number expense">${totalExpense.toFixed(2)}</div>
-            </div>
-            <div class="stat-card">
+                </div>
+                <div class="stat-card">
                     <h3>结余</h3>
                     <div class="number">${balance >= 0 ? '+' : ''}${balance.toFixed(2)}</div>
-            </div>
-            <div class="stat-card">
+                </div>
+                <div class="stat-card">
                     <h3>收支比</h3>
-                    <div class="number">${ratio.toFixed(1)}%</div>
+                    <div class="number">${expenseRatio.toFixed(2)}%</div>
+                </div>
             </div>
-        </div>
             <div class="analysis-grid">
-        <div class="card">
+                <div class="card">
                     <h2>收支分类统计</h2>
-            <div class="chart-container">
+                    <div class="chart-container">
                         <canvas id="categoryChart"></canvas>
                     </div>
                 </div>
@@ -587,9 +592,9 @@ async function showAnalysis() {
                     <div class="table-container">
                         ${generateStatsTable(stats.data)}
                     </div>
+                </div>
             </div>
-        </div>
-    `;
+        `;
 
         // 初始化图表
         initCategoryChart(stats.data);
@@ -1425,42 +1430,74 @@ async function updateAnalysis() {
         let totalIncome = 0;
         let totalExpense = 0;
         stats.data.forEach(item => {
+            const amount = Number((parseFloat(item.total) || 0).toFixed(2));
             if (item.type === 'income') {
-                totalIncome += parseFloat(item.total) || 0;
+                totalIncome += amount;
             } else if (item.type === 'expense') {
-                totalExpense += parseFloat(item.total) || 0;
+                totalExpense += amount;
             }
         });
 
         // 计算结余和收支比
-        const balance = totalIncome - totalExpense;
-        const ratio = totalExpense > 0 ? (totalIncome / totalExpense * 100) : 0;
+        const balance = Number((totalIncome - totalExpense).toFixed(2));
+        const expenseRatio = totalIncome > 0 ? 
+            Number(((totalExpense / totalIncome) * 100).toFixed(2)) : 0;
 
-        // 更新统计卡片
-        document.querySelector('.stat-card:nth-child(1) .number').textContent = 
-            `${totalIncome.toFixed(2)}`;
-        document.querySelector('.stat-card:nth-child(2) .number').textContent = 
-            `${totalExpense.toFixed(2)}`;
-        document.querySelector('.stat-card:nth-child(3) .number').textContent = 
-            `${balance.toFixed(2)}`;
-        document.querySelector('.stat-card:nth-child(4) .number').textContent = 
-            `${ratio.toFixed(1)}%`;
-        
-        // 更新表格
-        document.querySelector('.table-container').innerHTML = generateStatsTable(stats.data);
-        
-        // 更新图表
-        // 先销毁旧图表
-        const oldChart = Chart.getChart('categoryChart');
-        if (oldChart) {
-            oldChart.destroy();
-        }
-        // 创建新图表
+        // 使用之前定义的计算函数获取更详细的财务比率
+        const ratios = calculateFinancialRatios(totalIncome, totalExpense);
+
+        // 更新界面
+        document.getElementById('content').innerHTML = `
+            <div class="header">
+                <h1>数据分析</h1>
+                <div class="date-selector">
+                    <select id="yearSelect" onchange="updateAnalysis()">
+                        ${generateYearOptions(year)}
+                    </select>
+                    <select id="monthSelect" onchange="updateAnalysis()">
+                        ${generateMonthOptions(month)}
+                    </select>
+                </div>
+            </div>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>总收入</h3>
+                    <div class="number income">${totalIncome.toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>总支出</h3>
+                    <div class="number expense">${totalExpense.toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>结余</h3>
+                    <div class="number">${balance >= 0 ? '+' : ''}${balance.toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>收支比</h3>
+                    <div class="number">${expenseRatio.toFixed(2)}%</div>
+                </div>
+            </div>
+            <div class="analysis-grid">
+                <div class="card">
+                    <h2>收支分类统计</h2>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>详细统计数据</h2>
+                    <div class="table-container">
+                        ${generateStatsTable(stats.data)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 初始化图表
         initCategoryChart(stats.data);
-
     } catch (error) {
-        console.error('更新分析数据失败:', error);
-        alert('更新失败: ' + error.message);
+        console.error('加载分析数据失败:', error);
+        showError('加载分析数据失败: ' + error.message);
     }
 }
 
@@ -1590,62 +1627,72 @@ async function loadDashboardData() {
         const month = currentDate.getMonth() + 1;
         const currentMonth = `${year}-${month.toString().padStart(2, '0')}`;
         
-        console.log('开始加载仪表盘数据:', { year, month, currentMonth });
-        
         // 并行获取所有需要的数据
-        const [monthlyStats, budgets, recentTransactions] = await Promise.all([
+        const [monthlyStats, budgets, recentTransactions, categoryExpenses] = await Promise.all([
             window.ipcRenderer.invoke('get-monthly-stats', year, month),
             window.ipcRenderer.invoke('get-budget', currentMonth),
             window.ipcRenderer.invoke('get-transactions', { 
                 limit: 5,
                 orderBy: 'date',
                 orderDirection: 'DESC'
-            })
+            }),
+            window.ipcRenderer.invoke('get-category-expenses', currentMonth)
         ]);
 
-        console.log('获取到的数据:', {
-            monthlyStats,
-            budgets,
-            recentTransactions
-        });
-
-        // 处理月度统计数据
+        // 处理月度统计数据（用于收入计算）
         let monthlyIncome = 0;
         let monthlyExpense = 0;
-        if (monthlyStats.success && monthlyStats.data) {
+        if (monthlyStats.success && Array.isArray(monthlyStats.data)) {
             monthlyStats.data.forEach(stat => {
                 if (stat.type === 'income') {
-                    monthlyIncome = parseFloat(stat.total) || 0;
+                    monthlyIncome = Number((parseFloat(stat.total) || 0).toFixed(2));
                 } else if (stat.type === 'expense') {
-                    monthlyExpense = parseFloat(stat.total) || 0;
+                    monthlyExpense = Number((parseFloat(stat.total) || 0).toFixed(2));
                 }
             });
         }
 
-        // 计算结余和预算使用情况
-        const balance = monthlyIncome - monthlyExpense;
+        // 计算预算相关数据
         const totalBudget = budgets.success && budgets.data ? 
             budgets.data.reduce((sum, b) => sum + parseFloat(b.amount), 0) : 0;
-        const budgetUsage = totalBudget > 0 ? 
-            (monthlyExpense / totalBudget * 100) : 0;
+            
+        // 使用分类支出计算总支出（仅包含有预算的类别）
+        const budgetedExpenses = categoryExpenses.success ? 
+            categoryExpenses.data.reduce((sum, item) => sum + parseFloat(item.total), 0) : 0;
 
-        console.log('计算结果:', {
-            monthlyIncome,
-            monthlyExpense,
-            balance,
-            totalBudget,
-            budgetUsage
-        });
+        // 计算结余（使用总支出）和预算使用率（使用有预算类别的支出）
+        const balance = monthlyIncome - monthlyExpense; // 使用总支出计算结余
+        const budgetUsage = totalBudget > 0 ? 
+            (budgetedExpenses / totalBudget * 100) : 0; // 使用有预算类别的支出计算使用率
 
         // 更新仪表盘数据
         document.querySelector('.stat-card:nth-child(1) .number').textContent = 
             `${monthlyIncome.toFixed(2)}`;
         document.querySelector('.stat-card:nth-child(2) .number').textContent = 
-            `${monthlyExpense.toFixed(2)}`;
+            `${monthlyExpense.toFixed(2)}`; // 显示总支出
         document.querySelector('.stat-card:nth-child(3) .number').textContent = 
             `${balance.toFixed(2)}`;
         document.querySelector('.stat-card:nth-child(4) .number').textContent = 
             `${budgetUsage.toFixed(1)}%`;
+
+        // 处理预算预警（使用有预算类别的支出）
+        if (totalBudget > 0 && budgetUsage >= 80) {
+            const warningCard = document.createElement('div');
+            warningCard.className = 'card warning';
+            warningCard.innerHTML = `
+                <div class="warning-content">
+                    <i class="mdi mdi-alert"></i>
+                    <span>预算预警：本月预算使用率已达 ${budgetUsage.toFixed(1)}%</span>
+                </div>
+            `;
+            // 移除现有的预警卡片（如果存在）
+            document.querySelector('.card.warning')?.remove();
+            // 添加新的预警卡片
+            document.querySelector('.dashboard-grid').after(warningCard);
+        } else {
+            // 如果不需要预警，移除预警卡片
+            document.querySelector('.card.warning')?.remove();
+        }
 
         // 更新最近交易列表
         const transactionsList = document.querySelector('.card:last-child tbody');
@@ -1667,25 +1714,11 @@ async function loadDashboardData() {
                 transactionsList.innerHTML = '<tr><td colspan="5" style="text-align: center;">暂无交易记录</td></tr>';
             }
         } else {
-            console.error('获取最近交易失败:', recentTransactions);
             transactionsList.innerHTML = '<tr><td colspan="5" style="text-align: center;">加载失败</td></tr>';
         }
 
         // 更新趋势图表
         await updateTrendChart();
-
-        // 添加预算预警检查
-        if (totalBudget > 0 && monthlyExpense >= totalBudget * 0.8) {
-            const warningCard = document.createElement('div');
-            warningCard.className = 'card warning';
-            warningCard.innerHTML = `
-                <div class="warning-content">
-                    <i class="mdi mdi-alert"></i>
-                    <span>预算预警：本月支出已达到预算的 ${(monthlyExpense/totalBudget*100).toFixed(1)}%</span>
-                </div>
-            `;
-            document.querySelector('.dashboard-grid').after(warningCard);
-        }
 
     } catch (error) {
         console.error('加载仪表盘数据失败:', error);
@@ -2477,4 +2510,25 @@ async function showAbout() {
             <p>© 2024 All Rights Reserved</p>
         </div>
     `;
+}
+
+// 添加专门的收支比计算函数
+function calculateFinancialRatios(income, expense) {
+    const ratios = {
+        incomeExpenseRatio: 0,
+        expenseIncomePercentage: 0,
+        surplus: 0
+    };
+    
+    if (income > 0 && expense > 0) {
+        ratios.incomeExpenseRatio = Number((income / expense).toFixed(2));
+        ratios.expenseIncomePercentage = Number(((expense / income) * 100).toFixed(2));
+    } else if (income > 0) {
+        ratios.incomeExpenseRatio = Infinity;
+        ratios.expenseIncomePercentage = 0;
+    }
+    
+    ratios.surplus = Number((income - expense).toFixed(2));
+    
+    return ratios;
 } 

@@ -553,14 +553,19 @@ ipcMain.handle('export-data', async (event, format, savePath) => {
 // 修改自动备份功能
 async function setupAutoBackup() {
     try {
-        // 使用应用程序目录而不是用户数据目录
+        // 获取应用程序目录和源代码目录
         const appPath = path.dirname(app.getPath('exe'));
-        const backupPath = path.join(appPath, 'backups');
+        const srcPath = path.join(__dirname); // 源代码目录
         
-        // 确保备份目录存在
-        if (!fs.existsSync(backupPath)) {
-            await fsPromises.mkdir(backupPath, { recursive: true });
-        }
+        // 创建两个备份路径
+        const appBackupPath = path.join(appPath, 'backups');
+        const srcBackupPath = path.join(srcPath, 'backups');
+        
+        // 确保两个备份目录都存在
+        await Promise.all([
+            fsPromises.mkdir(appBackupPath, { recursive: true }),
+            fsPromises.mkdir(srcBackupPath, { recursive: true })
+        ]);
         
         // 确保数据库文件存在
         const dbPath = path.join(appPath, 'finance.db');
@@ -571,11 +576,16 @@ async function setupAutoBackup() {
         
         console.log('自动备份已初始化:', {
             appPath,
-            backupPath,
+            srcPath,
+            appBackupPath,
+            srcBackupPath,
             dbPath
         });
+
+        return { appBackupPath, srcBackupPath };
     } catch (error) {
         console.error('初始化自动备份失败:', error);
+        throw error;
     }
 }
 
@@ -623,43 +633,31 @@ ipcMain.on('window-control', async (event, command) => {
                 const autoBackupEnabled = settings.find(s => s.key === 'autoBackup')?.value === 'true';
                 
                 if (autoBackupEnabled) {
-                    const appPath = path.dirname(app.getPath('exe'));
-                    const backupPath = path.join(appPath, 'backups');
-                    const dbPath = path.join(appPath, 'finance.db');
+                    // 获取备份路径
+                    const { appBackupPath, srcBackupPath } = await setupAutoBackup();
+                    const dbPath = path.join(path.dirname(app.getPath('exe')), 'finance.db');
 
-                    // 确保备份目录存在
-                    if (!fs.existsSync(backupPath)) {
-                        await fsPromises.mkdir(backupPath, { recursive: true });
-                    }
+                    // 生成备份文件名
+                    const timestamp = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}_${new Date().getHours().toString().padStart(2, '0')}${new Date().getMinutes().toString().padStart(2, '0')}${new Date().getSeconds().toString().padStart(2, '0')}`;
+                    
+                    // 管理两个目录的备份文件
+                    for (const backupPath of [appBackupPath, srcBackupPath]) {
+                        // 获取现有备份并管理数量
+                        const files = await fsPromises.readdir(backupPath);
+                        const backupFiles = files
+                            .filter(file => file.startsWith('backup_') && file.endsWith('.db'))
+                            .sort((a, b) => b.localeCompare(a));
 
-                    // 确保数据库文件存在
-                    if (!fs.existsSync(dbPath)) {
-                        throw new Error('数据库文件不存在');
-                    }
-                    
-                    // 获取所有备份文件并按时间排序
-                    const files = await fsPromises.readdir(backupPath);
-                    const backupFiles = files
-                        .filter(file => file.startsWith('backup_') && file.endsWith('.db'))
-                        .sort((a, b) => b.localeCompare(a));
+                        // 限制备份数量为5个
+                        if (backupFiles.length >= 5) {
+                            const oldestFile = path.join(backupPath, backupFiles[backupFiles.length - 1]);
+                            await fsPromises.unlink(oldestFile);
+                        }
 
-                    // 如果已有5个或更多备份，删除最旧的备份
-                    if (backupFiles.length >= 5) {
-                        const oldestFile = path.join(backupPath, backupFiles[backupFiles.length - 1]);
-                        await fsPromises.unlink(oldestFile);
+                        // 创建新备份
+                        const backupFile = path.join(backupPath, `backup_${timestamp}.db`);
+                        await fsPromises.copyFile(dbPath, backupFile);
                     }
-                    
-                    // 生成新的备份文件名（精确到秒）
-                    const now = new Date();
-                    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-                    const backupFile = path.join(backupPath, `backup_${timestamp}.db`);
-                    
-                    // 创建新备份
-                    await fsPromises.copyFile(dbPath, backupFile);
-                    console.log('自动备份已创建:', {
-                        source: dbPath,
-                        backup: backupFile
-                    });
                 }
                 
                 // 关闭应用

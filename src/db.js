@@ -77,6 +77,15 @@ function initDatabase() {
     });
 }
 
+// 添加数据验证函数
+function validateAmount(amount) {
+    const num = parseFloat(amount);
+    if (isNaN(num) || !isFinite(num)) {
+        throw new Error('无效的金额');
+    }
+    return Number(num.toFixed(2));
+}
+
 // 导出数据库操作方法
 module.exports = {
     // 导出数据库路径
@@ -97,16 +106,22 @@ module.exports = {
     // 添加交易记录
     addTransaction: (data) => {
         return new Promise((resolve, reject) => {
-            const { type, category, amount, date, description } = data;
-            db.run(
-                `INSERT INTO transactions (type, category, amount, date, description) 
-                 VALUES (?, ?, ?, ?, ?)`,
-                [type, category, amount, date, description],
-                function(err) {
-                    if (err) reject(err);
-                    else resolve(this.lastID);
-                }
-            );
+            try {
+                const { type, category, amount, date, description } = data;
+                const validatedAmount = validateAmount(amount);
+                
+                db.run(
+                    `INSERT INTO transactions (type, category, amount, date, description) 
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [type, category, validatedAmount, date, description],
+                    function(err) {
+                        if (err) reject(err);
+                        else resolve(this.lastID);
+                    }
+                );
+            } catch (error) {
+                reject(error);
+            }
         });
     },
 
@@ -186,9 +201,11 @@ module.exports = {
                 const numYear = parseInt(year);
                 const numMonth = parseInt(month);
 
-                // 构建日期范围
-                const startDate = `${numYear}-${numMonth.toString().padStart(2, '0')}-01`;
-                const endDate = new Date(numYear, numMonth, 0).toISOString().slice(0, 10);
+                // 修改日期范围计算方式
+                const startDate = new Date(numYear, numMonth - 1, 1)
+                    .toISOString().slice(0, 10);
+                const endDate = new Date(numYear, numMonth, 0)
+                    .toISOString().slice(0, 10);
 
                 console.log('查询日期范围:', { startDate, endDate });
 
@@ -196,7 +213,7 @@ module.exports = {
                 db.all(`
                     SELECT 
                         type,
-                        SUM(amount) as total
+                        ROUND(SUM(amount), 2) as total
                     FROM transactions 
                     WHERE date BETWEEN ? AND ?
                     GROUP BY type
@@ -332,16 +349,19 @@ module.exports = {
                     throw new Error('无效的月份格式');
                 }
 
+                // 修改查询，只获取已设置预算的类别的支出
                 db.all(`
                     SELECT 
-                        category,
-                        SUM(amount) as total
-                    FROM transactions 
-                    WHERE type = 'expense'
-                    AND strftime('%Y-%m', date) = ?
-                    GROUP BY category
+                        t.category,
+                        ROUND(SUM(t.amount), 2) as total
+                    FROM transactions t
+                    INNER JOIN budgets b ON t.category = b.category
+                    WHERE t.type = 'expense'
+                    AND strftime('%Y-%m', t.date) = ?
+                    AND b.month = ?
+                    GROUP BY t.category
                     ORDER BY total DESC
-                `, [month], (err, rows) => {
+                `, [month, month], (err, rows) => {
                     if (err) {
                         console.error('查询分类支出失败:', err);
                         reject(err);
